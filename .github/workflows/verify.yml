@@ -1,0 +1,31 @@
+name: verify
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "40 7 * * *"
+  workflow_dispatch:
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: chain, proofs and the append-only rule (every push)
+        if: github.event_name == 'push'
+        run: |
+          BEFORE="${{ github.event.before }}"
+          if git cat-file -e "$BEFORE" 2>/dev/null; then
+            python3 code/ledger_verify_v1_1_2026-10-02.py --repo . --source none --append-only "$BEFORE"
+          else
+            python3 code/ledger_verify_v1_1_2026-10-02.py --repo . --source none
+          fi
+      - name: full recomputation from the public archive (daily)
+        if: github.event_name != 'push'
+        run: python3 code/ledger_verify_v1_1_2026-10-02.py --repo . --source archive --out verify_out
+      - uses: actions/upload-artifact@v4
+        if: always() && github.event_name != 'push'
+        with:
+          name: scorecard
+          path: verify_out/*.json

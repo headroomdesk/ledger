@@ -1,0 +1,2 @@
+ledger.jsonl -text
+proofs/** -text
